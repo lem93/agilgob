@@ -27,20 +27,16 @@ class UserController extends Controller
 
       $data = array_merge(
             [
-                'data' => $usersPaginated->all(),
-            ],
-            [
-                'paginator' => [
-                    'total' => $usersPaginated->total(),
-                    'per_page' => $usersPaginated->perPage(),
-                    'current_page' => $usersPaginated->currentPage(),
-                    'last_page' => $usersPaginated->lastPage(),
-                    'next_page_url' => $usersPaginated->nextPageUrl(),
-                    'prev_page_url' => $usersPaginated->previousPageUrl(),
-                    'from' => $usersPaginated->firstItem(),
-                    'to' => $usersPaginated->lastItem(),
-                ]
-            ]
+              'total' => $usersPaginated->total(),
+              'per_page' => $usersPaginated->perPage(),
+              'current_page' => $usersPaginated->currentPage(),
+              'last_page' => $usersPaginated->lastPage(),
+              'next_page_url' => $usersPaginated->nextPageUrl(),
+              'prev_page_url' => $usersPaginated->previousPageUrl(),
+              'from' => $usersPaginated->firstItem(),
+              'to' => $usersPaginated->lastItem(),
+              'data' => $usersPaginated->all(),
+              ]
         );
         return response()->json($data);
     }

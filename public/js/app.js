@@ -86,408 +86,6 @@
 /************************************************************************/
 /******/ ({
 
-/***/ "./node_modules/accounting/accounting.js":
-/*!***********************************************!*\
-  !*** ./node_modules/accounting/accounting.js ***!
-  \***********************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-/*!
- * accounting.js v0.4.1
- * Copyright 2014 Open Exchange Rates
- *
- * Freely distributable under the MIT license.
- * Portions of accounting.js are inspired or borrowed from underscore.js
- *
- * Full details and documentation:
- * http://openexchangerates.github.io/accounting.js/
- */
-
-(function(root, undefined) {
-
-	/* --- Setup --- */
-
-	// Create the local library object, to be exported or referenced globally later
-	var lib = {};
-
-	// Current version
-	lib.version = '0.4.1';
-
-
-	/* --- Exposed settings --- */
-
-	// The library's settings configuration object. Contains default parameters for
-	// currency and number formatting
-	lib.settings = {
-		currency: {
-			symbol : "$",		// default currency symbol is '$'
-			format : "%s%v",	// controls output: %s = symbol, %v = value (can be object, see docs)
-			decimal : ".",		// decimal point separator
-			thousand : ",",		// thousands separator
-			precision : 2,		// decimal places
-			grouping : 3		// digit grouping (not implemented yet)
-		},
-		number: {
-			precision : 0,		// default precision on numbers is 0
-			grouping : 3,		// digit grouping (not implemented yet)
-			thousand : ",",
-			decimal : "."
-		}
-	};
-
-
-	/* --- Internal Helper Methods --- */
-
-	// Store reference to possibly-available ECMAScript 5 methods for later
-	var nativeMap = Array.prototype.map,
-		nativeIsArray = Array.isArray,
-		toString = Object.prototype.toString;
-
-	/**
-	 * Tests whether supplied parameter is a string
-	 * from underscore.js
-	 */
-	function isString(obj) {
-		return !!(obj === '' || (obj && obj.charCodeAt && obj.substr));
-	}
-
-	/**
-	 * Tests whether supplied parameter is a string
-	 * from underscore.js, delegates to ECMA5's native Array.isArray
-	 */
-	function isArray(obj) {
-		return nativeIsArray ? nativeIsArray(obj) : toString.call(obj) === '[object Array]';
-	}
-
-	/**
-	 * Tests whether supplied parameter is a true object
-	 */
-	function isObject(obj) {
-		return obj && toString.call(obj) === '[object Object]';
-	}
-
-	/**
-	 * Extends an object with a defaults object, similar to underscore's _.defaults
-	 *
-	 * Used for abstracting parameter handling from API methods
-	 */
-	function defaults(object, defs) {
-		var key;
-		object = object || {};
-		defs = defs || {};
-		// Iterate over object non-prototype properties:
-		for (key in defs) {
-			if (defs.hasOwnProperty(key)) {
-				// Replace values with defaults only if undefined (allow empty/zero values):
-				if (object[key] == null) object[key] = defs[key];
-			}
-		}
-		return object;
-	}
-
-	/**
-	 * Implementation of `Array.map()` for iteration loops
-	 *
-	 * Returns a new Array as a result of calling `iterator` on each array value.
-	 * Defers to native Array.map if available
-	 */
-	function map(obj, iterator, context) {
-		var results = [], i, j;
-
-		if (!obj) return results;
-
-		// Use native .map method if it exists:
-		if (nativeMap && obj.map === nativeMap) return obj.map(iterator, context);
-
-		// Fallback for native .map:
-		for (i = 0, j = obj.length; i < j; i++ ) {
-			results[i] = iterator.call(context, obj[i], i, obj);
-		}
-		return results;
-	}
-
-	/**
-	 * Check and normalise the value of precision (must be positive integer)
-	 */
-	function checkPrecision(val, base) {
-		val = Math.round(Math.abs(val));
-		return isNaN(val)? base : val;
-	}
-
-
-	/**
-	 * Parses a format string or object and returns format obj for use in rendering
-	 *
-	 * `format` is either a string with the default (positive) format, or object
-	 * containing `pos` (required), `neg` and `zero` values (or a function returning
-	 * either a string or object)
-	 *
-	 * Either string or format.pos must contain "%v" (value) to be valid
-	 */
-	function checkCurrencyFormat(format) {
-		var defaults = lib.settings.currency.format;
-
-		// Allow function as format parameter (should return string or object):
-		if ( typeof format === "function" ) format = format();
-
-		// Format can be a string, in which case `value` ("%v") must be present:
-		if ( isString( format ) && format.match("%v") ) {
-
-			// Create and return positive, negative and zero formats:
-			return {
-				pos : format,
-				neg : format.replace("-", "").replace("%v", "-%v"),
-				zero : format
-			};
-
-		// If no format, or object is missing valid positive value, use defaults:
-		} else if ( !format || !format.pos || !format.pos.match("%v") ) {
-
-			// If defaults is a string, casts it to an object for faster checking next time:
-			return ( !isString( defaults ) ) ? defaults : lib.settings.currency.format = {
-				pos : defaults,
-				neg : defaults.replace("%v", "-%v"),
-				zero : defaults
-			};
-
-		}
-		// Otherwise, assume format was fine:
-		return format;
-	}
-
-
-	/* --- API Methods --- */
-
-	/**
-	 * Takes a string/array of strings, removes all formatting/cruft and returns the raw float value
-	 * Alias: `accounting.parse(string)`
-	 *
-	 * Decimal must be included in the regular expression to match floats (defaults to
-	 * accounting.settings.number.decimal), so if the number uses a non-standard decimal 
-	 * separator, provide it as the second argument.
-	 *
-	 * Also matches bracketed negatives (eg. "$ (1.99)" => -1.99)
-	 *
-	 * Doesn't throw any errors (`NaN`s become 0) but this may change in future
-	 */
-	var unformat = lib.unformat = lib.parse = function(value, decimal) {
-		// Recursively unformat arrays:
-		if (isArray(value)) {
-			return map(value, function(val) {
-				return unformat(val, decimal);
-			});
-		}
-
-		// Fails silently (need decent errors):
-		value = value || 0;
-
-		// Return the value as-is if it's already a number:
-		if (typeof value === "number") return value;
-
-		// Default decimal point comes from settings, but could be set to eg. "," in opts:
-		decimal = decimal || lib.settings.number.decimal;
-
-		 // Build regex to strip out everything except digits, decimal point and minus sign:
-		var regex = new RegExp("[^0-9-" + decimal + "]", ["g"]),
-			unformatted = parseFloat(
-				("" + value)
-				.replace(/\((.*)\)/, "-$1") // replace bracketed values with negatives
-				.replace(regex, '')         // strip out any cruft
-				.replace(decimal, '.')      // make sure decimal point is standard
-			);
-
-		// This will fail silently which may cause trouble, let's wait and see:
-		return !isNaN(unformatted) ? unformatted : 0;
-	};
-
-
-	/**
-	 * Implementation of toFixed() that treats floats more like decimals
-	 *
-	 * Fixes binary rounding issues (eg. (0.615).toFixed(2) === "0.61") that present
-	 * problems for accounting- and finance-related software.
-	 */
-	var toFixed = lib.toFixed = function(value, precision) {
-		precision = checkPrecision(precision, lib.settings.number.precision);
-		var power = Math.pow(10, precision);
-
-		// Multiply up by precision, round accurately, then divide and use native toFixed():
-		return (Math.round(lib.unformat(value) * power) / power).toFixed(precision);
-	};
-
-
-	/**
-	 * Format a number, with comma-separated thousands and custom precision/decimal places
-	 * Alias: `accounting.format()`
-	 *
-	 * Localise by overriding the precision and thousand / decimal separators
-	 * 2nd parameter `precision` can be an object matching `settings.number`
-	 */
-	var formatNumber = lib.formatNumber = lib.format = function(number, precision, thousand, decimal) {
-		// Resursively format arrays:
-		if (isArray(number)) {
-			return map(number, function(val) {
-				return formatNumber(val, precision, thousand, decimal);
-			});
-		}
-
-		// Clean up number:
-		number = unformat(number);
-
-		// Build options object from second param (if object) or all params, extending defaults:
-		var opts = defaults(
-				(isObject(precision) ? precision : {
-					precision : precision,
-					thousand : thousand,
-					decimal : decimal
-				}),
-				lib.settings.number
-			),
-
-			// Clean up precision
-			usePrecision = checkPrecision(opts.precision),
-
-			// Do some calc:
-			negative = number < 0 ? "-" : "",
-			base = parseInt(toFixed(Math.abs(number || 0), usePrecision), 10) + "",
-			mod = base.length > 3 ? base.length % 3 : 0;
-
-		// Format the number:
-		return negative + (mod ? base.substr(0, mod) + opts.thousand : "") + base.substr(mod).replace(/(\d{3})(?=\d)/g, "$1" + opts.thousand) + (usePrecision ? opts.decimal + toFixed(Math.abs(number), usePrecision).split('.')[1] : "");
-	};
-
-
-	/**
-	 * Format a number into currency
-	 *
-	 * Usage: accounting.formatMoney(number, symbol, precision, thousandsSep, decimalSep, format)
-	 * defaults: (0, "$", 2, ",", ".", "%s%v")
-	 *
-	 * Localise by overriding the symbol, precision, thousand / decimal separators and format
-	 * Second param can be an object matching `settings.currency` which is the easiest way.
-	 *
-	 * To do: tidy up the parameters
-	 */
-	var formatMoney = lib.formatMoney = function(number, symbol, precision, thousand, decimal, format) {
-		// Resursively format arrays:
-		if (isArray(number)) {
-			return map(number, function(val){
-				return formatMoney(val, symbol, precision, thousand, decimal, format);
-			});
-		}
-
-		// Clean up number:
-		number = unformat(number);
-
-		// Build options object from second param (if object) or all params, extending defaults:
-		var opts = defaults(
-				(isObject(symbol) ? symbol : {
-					symbol : symbol,
-					precision : precision,
-					thousand : thousand,
-					decimal : decimal,
-					format : format
-				}),
-				lib.settings.currency
-			),
-
-			// Check format (returns object with pos, neg and zero):
-			formats = checkCurrencyFormat(opts.format),
-
-			// Choose which format to use for this value:
-			useFormat = number > 0 ? formats.pos : number < 0 ? formats.neg : formats.zero;
-
-		// Return with currency symbol added:
-		return useFormat.replace('%s', opts.symbol).replace('%v', formatNumber(Math.abs(number), checkPrecision(opts.precision), opts.thousand, opts.decimal));
-	};
-
-
-	/**
-	 * Format a list of numbers into an accounting column, padding with whitespace
-	 * to line up currency symbols, thousand separators and decimals places
-	 *
-	 * List should be an array of numbers
-	 * Second parameter can be an object containing keys that match the params
-	 *
-	 * Returns array of accouting-formatted number strings of same length
-	 *
-	 * NB: `white-space:pre` CSS rule is required on the list container to prevent
-	 * browsers from collapsing the whitespace in the output strings.
-	 */
-	lib.formatColumn = function(list, symbol, precision, thousand, decimal, format) {
-		if (!list) return [];
-
-		// Build options object from second param (if object) or all params, extending defaults:
-		var opts = defaults(
-				(isObject(symbol) ? symbol : {
-					symbol : symbol,
-					precision : precision,
-					thousand : thousand,
-					decimal : decimal,
-					format : format
-				}),
-				lib.settings.currency
-			),
-
-			// Check format (returns object with pos, neg and zero), only need pos for now:
-			formats = checkCurrencyFormat(opts.format),
-
-			// Whether to pad at start of string or after currency symbol:
-			padAfterSymbol = formats.pos.indexOf("%s") < formats.pos.indexOf("%v") ? true : false,
-
-			// Store value for the length of the longest string in the column:
-			maxLength = 0,
-
-			// Format the list according to options, store the length of the longest string:
-			formatted = map(list, function(val, i) {
-				if (isArray(val)) {
-					// Recursively format columns if list is a multi-dimensional array:
-					return lib.formatColumn(val, opts);
-				} else {
-					// Clean up the value
-					val = unformat(val);
-
-					// Choose which format to use for this value (pos, neg or zero):
-					var useFormat = val > 0 ? formats.pos : val < 0 ? formats.neg : formats.zero,
-
-						// Format this value, push into formatted list and save the length:
-						fVal = useFormat.replace('%s', opts.symbol).replace('%v', formatNumber(Math.abs(val), checkPrecision(opts.precision), opts.thousand, opts.decimal));
-
-					if (fVal.length > maxLength) maxLength = fVal.length;
-					return fVal;
-				}
-			});
-
-		// Pad each number in the list and send back the column of numbers:
-		return map(formatted, function(val, i) {
-			// Only if this is a string (not a nested array, which would have already been padded):
-			if (isString(val) && val.length < maxLength) {
-				// Depending on symbol position, pad after symbol or at index 0:
-				return padAfterSymbol ? val.replace(opts.symbol, opts.symbol+(new Array(maxLength - val.length + 1).join(" "))) : (new Array(maxLength - val.length + 1).join(" ")) + val;
-			}
-			return val;
-		});
-	};
-
-
-	/* --- Module Definition --- */
-
-	// Export accounting for CommonJS. If being loaded as an AMD module, define it as such.
-	// Otherwise, just add `accounting` to the global object
-	if (true) {
-		if ( true && module.exports) {
-			exports = module.exports = lib;
-		}
-		exports.accounting = lib;
-	} else {}
-
-	// Root will be `window` in browser or `global` on the server:
-}(this));
-
-
-/***/ }),
-
 /***/ "./node_modules/axios/index.js":
 /*!*************************************!*\
   !*** ./node_modules/axios/index.js ***!
@@ -2314,6 +1912,17 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 /* harmony default export */ __webpack_exports__["default"] = ({
   components: {}
 });
@@ -2335,8 +1944,6 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
-//
-//
 /* harmony default export */ __webpack_exports__["default"] = ({
   props: {
     rowData: {
@@ -2349,60 +1956,7 @@ __webpack_require__.r(__webpack_exports__);
   },
   methods: {
     itemAction: function itemAction(action, data, index) {
-      console.log('custom-actions: ' + action, data.name, index);
-    }
-  }
-});
-
-/***/ }),
-
-/***/ "./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/DetailRow.vue?vue&type=script&lang=js&":
-/*!********************************************************************************************************************************************************************!*\
-  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/DetailRow.vue?vue&type=script&lang=js& ***!
-  \********************************************************************************************************************************************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-/* harmony default export */ __webpack_exports__["default"] = ({
-  props: {
-    rowData: {
-      type: Object,
-      required: true
-    },
-    rowIndex: {
-      type: Number
-    }
-  },
-  methods: {
-    onClick: function onClick(event) {
-      console.log('my-detail-row: on-click', event.target);
+      window.location.href = 'http://agilgob.test/users/' + data.nick + '/edit';
     }
   }
 });
@@ -2431,6 +1985,9 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+//
+//
 /* harmony default export */ __webpack_exports__["default"] = ({
   data: function data() {
     return {
@@ -2438,6 +1995,9 @@ __webpack_require__.r(__webpack_exports__);
     };
   },
   methods: {
+    redirectCreate: function redirectCreate() {
+      window.location.href = 'http://agilgob.test/users/create';
+    },
     doFilter: function doFilter() {
       this.$events.fire('filter-set', this.filterText);
     },
@@ -2459,20 +2019,18 @@ __webpack_require__.r(__webpack_exports__);
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var accounting__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! accounting */ "./node_modules/accounting/accounting.js");
-/* harmony import */ var accounting__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(accounting__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var moment__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! moment */ "./node_modules/moment/moment.js");
-/* harmony import */ var moment__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(moment__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var vuetable_2_src_components_Vuetable__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! vuetable-2/src/components/Vuetable */ "./node_modules/vuetable-2/src/components/Vuetable.vue");
-/* harmony import */ var vuetable_2_src_components_VuetablePagination__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! vuetable-2/src/components/VuetablePagination */ "./node_modules/vuetable-2/src/components/VuetablePagination.vue");
-/* harmony import */ var vuetable_2_src_components_VuetablePaginationInfo__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! vuetable-2/src/components/VuetablePaginationInfo */ "./node_modules/vuetable-2/src/components/VuetablePaginationInfo.vue");
-/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.common.js");
-/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(vue__WEBPACK_IMPORTED_MODULE_5__);
-/* harmony import */ var vue_events__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! vue-events */ "./node_modules/vue-events/dist/index.js");
-/* harmony import */ var vue_events__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(vue_events__WEBPACK_IMPORTED_MODULE_6__);
-/* harmony import */ var _CustomActions__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./CustomActions */ "./resources/js/components/CustomActions.vue");
-/* harmony import */ var _DetailRow__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./DetailRow */ "./resources/js/components/DetailRow.vue");
-/* harmony import */ var _FilterBar__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./FilterBar */ "./resources/js/components/FilterBar.vue");
+/* harmony import */ var moment__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! moment */ "./node_modules/moment/moment.js");
+/* harmony import */ var moment__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(moment__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var vuetable_2_src_components_Vuetable__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! vuetable-2/src/components/Vuetable */ "./node_modules/vuetable-2/src/components/Vuetable.vue");
+/* harmony import */ var vuetable_2_src_components_VuetablePagination__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! vuetable-2/src/components/VuetablePagination */ "./node_modules/vuetable-2/src/components/VuetablePagination.vue");
+/* harmony import */ var vuetable_2_src_components_VuetablePaginationInfo__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! vuetable-2/src/components/VuetablePaginationInfo */ "./node_modules/vuetable-2/src/components/VuetablePaginationInfo.vue");
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.common.js");
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(vue__WEBPACK_IMPORTED_MODULE_4__);
+/* harmony import */ var vue_events__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! vue-events */ "./node_modules/vue-events/dist/index.js");
+/* harmony import */ var vue_events__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(vue_events__WEBPACK_IMPORTED_MODULE_5__);
+/* harmony import */ var _CustomActions__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./CustomActions */ "./resources/js/components/CustomActions.vue");
+/* harmony import */ var _FilterBar__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./FilterBar */ "./resources/js/components/FilterBar.vue");
+//
 //
 //
 //
@@ -2508,25 +2066,20 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-
-
-vue__WEBPACK_IMPORTED_MODULE_5___default.a.use(vue_events__WEBPACK_IMPORTED_MODULE_6___default.a);
-vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('custom-actions', _CustomActions__WEBPACK_IMPORTED_MODULE_7__["default"]);
-vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('my-detail-row', _DetailRow__WEBPACK_IMPORTED_MODULE_8__["default"]);
-vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('filter-bar', _FilterBar__WEBPACK_IMPORTED_MODULE_9__["default"]);
+vue__WEBPACK_IMPORTED_MODULE_4___default.a.use(vue_events__WEBPACK_IMPORTED_MODULE_5___default.a);
+vue__WEBPACK_IMPORTED_MODULE_4___default.a.component('custom-actions', _CustomActions__WEBPACK_IMPORTED_MODULE_6__["default"]);
+vue__WEBPACK_IMPORTED_MODULE_4___default.a.component('filter-bar', _FilterBar__WEBPACK_IMPORTED_MODULE_7__["default"]);
 /* harmony default export */ __webpack_exports__["default"] = ({
   components: {
-    Vuetable: vuetable_2_src_components_Vuetable__WEBPACK_IMPORTED_MODULE_2__["default"],
-    VuetablePagination: vuetable_2_src_components_VuetablePagination__WEBPACK_IMPORTED_MODULE_3__["default"],
-    VuetablePaginationInfo: vuetable_2_src_components_VuetablePaginationInfo__WEBPACK_IMPORTED_MODULE_4__["default"]
+    Vuetable: vuetable_2_src_components_Vuetable__WEBPACK_IMPORTED_MODULE_1__["default"],
+    VuetablePagination: vuetable_2_src_components_VuetablePagination__WEBPACK_IMPORTED_MODULE_2__["default"],
+    VuetablePaginationInfo: vuetable_2_src_components_VuetablePaginationInfo__WEBPACK_IMPORTED_MODULE_3__["default"]
   },
   data: function data() {
     return {
       fields: [{
         name: 'nick',
-        title: 'nick',
-        titleClass: 'text-right',
-        dataClass: 'text-right'
+        sortField: 'nick'
       }, {
         name: 'nombre',
         sortField: 'nombre'
@@ -2550,7 +2103,7 @@ vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('filter-bar', _FilterBar__W
       }],
       css: {
         table: {
-          tableClass: 'table table-bordered table-striped table-hover',
+          tableClass: 'table table-bordered table-hover',
           ascendingIcon: 'glyphicon glyphicon-chevron-up',
           descendingIcon: 'glyphicon glyphicon-chevron-down'
         },
@@ -2575,8 +2128,8 @@ vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('filter-bar', _FilterBar__W
         }
       },
       sortOrder: [{
-        field: 'email',
-        sortField: 'email',
+        field: 'apellidos',
+        sortField: 'apellidos',
         direction: 'asc'
       }],
       moreParams: {}
@@ -2587,14 +2140,17 @@ vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('filter-bar', _FilterBar__W
       return value.toUpperCase();
     },
     genderLabel: function genderLabel(value) {
-      return value === 'M' ? '<span class="label label-success"><i class="glyphicon glyphicon-star"></i> Male</span>' : '<span class="label label-danger"><i class="glyphicon glyphicon-heart"></i> Female</span>';
-    },
-    formatNumber: function formatNumber(value) {
-      return accounting__WEBPACK_IMPORTED_MODULE_0___default.a.formatNumber(value, 2);
-    },
-    formatDate: function formatDate(value) {
-      var fmt = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'D MMM YYYY';
-      return value == null ? '' : moment__WEBPACK_IMPORTED_MODULE_1___default()(value, 'YYYY-MM-DD').format(fmt);
+      var label = '<span class="label label-light"></i>Otro</span>';
+
+      if (value === 'admin') {
+        label = '<span class="label label-warning">Admin</span>';
+      } else if (value === 'operador') {
+        label = '<span class="label label-success">Operador</span>';
+      } else if (value === 'administrativo') {
+        label = '<span class="label label-info">Administrativo</span>';
+      }
+
+      return label;
     },
     onPaginationData: function onPaginationData(paginationData) {
       this.$refs.pagination.setPaginationData(paginationData);
@@ -2615,7 +2171,7 @@ vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('filter-bar', _FilterBar__W
       this.moreParams = {
         filter: filterText
       };
-      vue__WEBPACK_IMPORTED_MODULE_5___default.a.nextTick(function () {
+      vue__WEBPACK_IMPORTED_MODULE_4___default.a.nextTick(function () {
         return _this.$refs.vuetable.refresh();
       });
     },
@@ -2623,7 +2179,7 @@ vue__WEBPACK_IMPORTED_MODULE_5___default.a.component('filter-bar', _FilterBar__W
       var _this2 = this;
 
       this.moreParams = {};
-      vue__WEBPACK_IMPORTED_MODULE_5___default.a.nextTick(function () {
+      vue__WEBPACK_IMPORTED_MODULE_4___default.a.nextTick(function () {
         return _this2.$refs.vuetable.refresh();
       });
     }
@@ -54744,7 +54300,20 @@ var render = function() {
   var _vm = this
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
-  return _c("my-vuetable")
+  return _c("div", { staticClass: "bg-white" }, [
+    _c("div", { staticClass: "flex" }, [
+      _c("div", { staticClass: "sm:hidden xl:block flex-1 px-4 py-2 m-2" }),
+      _vm._v(" "),
+      _c(
+        "div",
+        { staticClass: "flex-1 text-gray-700 px-4 py-2 m-2" },
+        [_c("my-vuetable")],
+        1
+      ),
+      _vm._v(" "),
+      _c("div", { staticClass: "sm:hidden xl:block flex-1 px-4 py-2 m-2" })
+    ])
+  ])
 }
 var staticRenderFns = []
 render._withStripped = true
@@ -54775,92 +54344,12 @@ var render = function() {
         staticClass: "btn btn-sm",
         on: {
           click: function($event) {
-            return _vm.itemAction("view-item", _vm.rowData, _vm.rowIndex)
-          }
-        }
-      },
-      [_c("i", { staticClass: "glyphicon glyphicon-zoom-in" })]
-    ),
-    _vm._v(" "),
-    _c(
-      "button",
-      {
-        staticClass: "btn btn-sm",
-        on: {
-          click: function($event) {
             return _vm.itemAction("edit-item", _vm.rowData, _vm.rowIndex)
           }
         }
       },
       [_c("i", { staticClass: "glyphicon glyphicon-pencil" })]
-    ),
-    _vm._v(" "),
-    _c(
-      "button",
-      {
-        staticClass: "btn btn-sm",
-        on: {
-          click: function($event) {
-            return _vm.itemAction("delete-item", _vm.rowData, _vm.rowIndex)
-          }
-        }
-      },
-      [_c("i", { staticClass: "glyphicon glyphicon-trash" })]
     )
-  ])
-}
-var staticRenderFns = []
-render._withStripped = true
-
-
-
-/***/ }),
-
-/***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/DetailRow.vue?vue&type=template&id=7b3acd24&":
-/*!************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/DetailRow.vue?vue&type=template&id=7b3acd24& ***!
-  \************************************************************************************************************************************************************************************************************/
-/*! exports provided: render, staticRenderFns */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "render", function() { return render; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "staticRenderFns", function() { return staticRenderFns; });
-var render = function() {
-  var _vm = this
-  var _h = _vm.$createElement
-  var _c = _vm._self._c || _h
-  return _c("div", { on: { click: _vm.onClick } }, [
-    _c("div", { staticClass: "inline field" }, [
-      _c("label", [_vm._v("Name: ")]),
-      _vm._v(" "),
-      _c("span", [_vm._v(_vm._s(_vm.rowData.name))])
-    ]),
-    _vm._v(" "),
-    _c("div", { staticClass: "inline field" }, [
-      _c("label", [_vm._v("Email: ")]),
-      _vm._v(" "),
-      _c("span", [_vm._v(_vm._s(_vm.rowData.email))])
-    ]),
-    _vm._v(" "),
-    _c("div", { staticClass: "inline field" }, [
-      _c("label", [_vm._v("Nickname: ")]),
-      _vm._v(" "),
-      _c("span", [_vm._v(_vm._s(_vm.rowData.nickname))])
-    ]),
-    _vm._v(" "),
-    _c("div", { staticClass: "inline field" }, [
-      _c("label", [_vm._v("Birthdate: ")]),
-      _vm._v(" "),
-      _c("span", [_vm._v(_vm._s(_vm.rowData.birthdate))])
-    ]),
-    _vm._v(" "),
-    _c("div", { staticClass: "inline field" }, [
-      _c("label", [_vm._v("Gender: ")]),
-      _vm._v(" "),
-      _c("span", [_vm._v(_vm._s(_vm.rowData.gender))])
-    ])
   ])
 }
 var staticRenderFns = []
@@ -54888,7 +54377,7 @@ var render = function() {
   return _c("div", { staticClass: "filter-bar" }, [
     _c("form", { staticClass: "form-inline" }, [
       _c("div", { staticClass: "form-group" }, [
-        _c("label", [_vm._v("Search for:")]),
+        _c("label", [_vm._v("Busca por:")]),
         _vm._v(" "),
         _c("input", {
           directives: [
@@ -54900,7 +54389,7 @@ var render = function() {
             }
           ],
           staticClass: "form-control",
-          attrs: { type: "text", placeholder: "name, nickname, or email" },
+          attrs: { type: "text", placeholder: "nombre, email, nick o rol" },
           domProps: { value: _vm.filterText },
           on: {
             keyup: function($event) {
@@ -54932,7 +54421,7 @@ var render = function() {
               }
             }
           },
-          [_vm._v("Go")]
+          [_vm._v("Buscar")]
         ),
         _vm._v(" "),
         _c(
@@ -54947,6 +54436,22 @@ var render = function() {
             }
           },
           [_vm._v("Reset")]
+        )
+      ]),
+      _vm._v(" "),
+      _c("div", { staticClass: "form-group float-right mx-6" }, [
+        _c(
+          "button",
+          {
+            staticClass: "btn btn-primary",
+            on: {
+              click: function($event) {
+                $event.preventDefault()
+                return _vm.redirectCreate($event)
+              }
+            }
+          },
+          [_vm._v("Crear Nuevo")]
         )
       ])
     ])
@@ -54982,12 +54487,13 @@ var render = function() {
       _c("vuetable", {
         ref: "vuetable",
         attrs: {
-          "api-url": "http://vuetable.ratiw.net/api/users",
+          "api-url": "http://agilgob.test/users/datatable",
           fields: _vm.fields,
           "pagination-path": "",
           css: _vm.css.table,
           "sort-order": _vm.sortOrder,
           "multi-sort": true,
+          "track-by": "nick",
           "detail-row-component": "my-detail-row",
           "append-params": _vm.moreParams
         },
@@ -69404,75 +68910,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "render", function() { return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_CustomActions_vue_vue_type_template_id_6463d9f1___WEBPACK_IMPORTED_MODULE_0__["render"]; });
 
 /* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "staticRenderFns", function() { return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_CustomActions_vue_vue_type_template_id_6463d9f1___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"]; });
-
-
-
-/***/ }),
-
-/***/ "./resources/js/components/DetailRow.vue":
-/*!***********************************************!*\
-  !*** ./resources/js/components/DetailRow.vue ***!
-  \***********************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _DetailRow_vue_vue_type_template_id_7b3acd24___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./DetailRow.vue?vue&type=template&id=7b3acd24& */ "./resources/js/components/DetailRow.vue?vue&type=template&id=7b3acd24&");
-/* harmony import */ var _DetailRow_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./DetailRow.vue?vue&type=script&lang=js& */ "./resources/js/components/DetailRow.vue?vue&type=script&lang=js&");
-/* empty/unused harmony star reexport *//* harmony import */ var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
-
-
-
-
-
-/* normalize component */
-
-var component = Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
-  _DetailRow_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__["default"],
-  _DetailRow_vue_vue_type_template_id_7b3acd24___WEBPACK_IMPORTED_MODULE_0__["render"],
-  _DetailRow_vue_vue_type_template_id_7b3acd24___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
-  false,
-  null,
-  null,
-  null
-  
-)
-
-/* hot reload */
-if (false) { var api; }
-component.options.__file = "resources/js/components/DetailRow.vue"
-/* harmony default export */ __webpack_exports__["default"] = (component.exports);
-
-/***/ }),
-
-/***/ "./resources/js/components/DetailRow.vue?vue&type=script&lang=js&":
-/*!************************************************************************!*\
-  !*** ./resources/js/components/DetailRow.vue?vue&type=script&lang=js& ***!
-  \************************************************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_DetailRow_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/babel-loader/lib??ref--4-0!../../../node_modules/vue-loader/lib??vue-loader-options!./DetailRow.vue?vue&type=script&lang=js& */ "./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/DetailRow.vue?vue&type=script&lang=js&");
-/* empty/unused harmony star reexport */ /* harmony default export */ __webpack_exports__["default"] = (_node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_DetailRow_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__["default"]); 
-
-/***/ }),
-
-/***/ "./resources/js/components/DetailRow.vue?vue&type=template&id=7b3acd24&":
-/*!******************************************************************************!*\
-  !*** ./resources/js/components/DetailRow.vue?vue&type=template&id=7b3acd24& ***!
-  \******************************************************************************/
-/*! exports provided: render, staticRenderFns */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_DetailRow_vue_vue_type_template_id_7b3acd24___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!../../../node_modules/vue-loader/lib??vue-loader-options!./DetailRow.vue?vue&type=template&id=7b3acd24& */ "./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/DetailRow.vue?vue&type=template&id=7b3acd24&");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "render", function() { return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_DetailRow_vue_vue_type_template_id_7b3acd24___WEBPACK_IMPORTED_MODULE_0__["render"]; });
-
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "staticRenderFns", function() { return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_DetailRow_vue_vue_type_template_id_7b3acd24___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"]; });
 
 
 

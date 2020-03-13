@@ -19,7 +19,12 @@ class User extends Authenticatable
         'nombre', 'apellidos', 'email', 'password', 'rol'
     ];
 
-    protected $primaryKey = 'nick';
+    protected $primaryKey = 'nick'; // or null
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
 
     /**
      * The attributes that should be hidden for arrays.
@@ -27,7 +32,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 
+        'password',
     ];
 
     /**

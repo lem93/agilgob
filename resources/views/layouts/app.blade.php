@@ -10,14 +10,13 @@
     <title>{{ config('app.name', 'AgilGob') }}</title>
 
     <!-- Scripts -->
-    <script src="{{ mix('js/app.js') }}" defer></script>
+    @yield('js')
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet" type="text/css">
 
     <!-- Styles -->
-    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
-    <link href="{{ mix('css/app.css') }}" rel="stylesheet">
+    @yield('css')
 </head>
 <body>
   @yield('content')

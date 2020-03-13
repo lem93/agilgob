@@ -1,8 +1,6 @@
   <template>
     <div class="custom-actions">
-      <button class="btn btn-sm" @click="itemAction('view-item', rowData, rowIndex)"><i class="glyphicon glyphicon-zoom-in"></i></button>
       <button class="btn btn-sm" @click="itemAction('edit-item', rowData, rowIndex)"><i class="glyphicon glyphicon-pencil"></i></button>
-      <button class="btn btn-sm" @click="itemAction('delete-item', rowData, rowIndex)"><i class="glyphicon glyphicon-trash"></i></button>
     </div>
   </template>
 
@@ -19,7 +17,7 @@
     },
     methods: {
       itemAction (action, data, index) {
-        console.log('custom-actions: ' + action, data.name, index)
+        window.location.href = 'http://agilgob.test/users/'+data.nick+'/edit';
       }
     }
   }

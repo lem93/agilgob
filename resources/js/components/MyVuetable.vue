@@ -2,12 +2,13 @@
   <div>
     <filter-bar></filter-bar>
     <vuetable ref="vuetable"
-      api-url="http://vuetable.ratiw.net/api/users"
+      api-url="http://agilgob.test/users/datatable"
       :fields="fields"
       pagination-path=""
       :css="css.table"
       :sort-order="sortOrder"
       :multi-sort="true"
+      track-by="nick"
       detail-row-component="my-detail-row"
       :append-params="moreParams"
       @vuetable:cell-clicked="onCellClicked"
@@ -26,7 +27,6 @@
 </template>
 
 <script>
-import accounting from 'accounting'
 import moment from 'moment'
 import Vuetable from 'vuetable-2/src/components/Vuetable'
 import VuetablePagination from 'vuetable-2/src/components/VuetablePagination'
@@ -34,11 +34,10 @@ import VuetablePaginationInfo from 'vuetable-2/src/components/VuetablePagination
 import Vue from 'vue'
 import VueEvents from 'vue-events'
 import CustomActions from './CustomActions'
-import DetailRow from './DetailRow'
 import FilterBar from './FilterBar'
+
 Vue.use(VueEvents)
 Vue.component('custom-actions', CustomActions)
-Vue.component('my-detail-row', DetailRow)
 Vue.component('filter-bar', FilterBar)
 export default {
   components: {
@@ -51,9 +50,7 @@ export default {
       fields: [
         {
           name: 'nick',
-          title: 'nick',
-          titleClass: 'text-right',
-          dataClass: 'text-right'
+          sortField: 'nick',
         },
         {
           name: 'nombre',
@@ -83,7 +80,7 @@ export default {
       ],
       css: {
         table: {
-          tableClass: 'table table-bordered table-striped table-hover',
+          tableClass: 'table table-bordered table-hover',
           ascendingIcon: 'glyphicon glyphicon-chevron-up',
           descendingIcon: 'glyphicon glyphicon-chevron-down'
         },
@@ -118,17 +115,15 @@ export default {
       return value.toUpperCase()
     },
     genderLabel (value) {
-      return value === 'M'
-        ? '<span class="label label-success"><i class="glyphicon glyphicon-star"></i> Male</span>'
-        : '<span class="label label-danger"><i class="glyphicon glyphicon-heart"></i> Female</span>'
-    },
-    formatNumber (value) {
-      return accounting.formatNumber(value, 2)
-    },
-    formatDate (value, fmt = 'D MMM YYYY') {
-      return (value == null)
-        ? ''
-        : moment(value, 'YYYY-MM-DD').format(fmt)
+      let label = '<span class="label label-light"></i>Otro</span>'
+      if (value === 'admin') {
+        label = '<span class="label label-warning">Admin</span>'
+      }else if (value === 'operador') {
+        label = '<span class="label label-success">Operador</span>'
+      }else if (value === 'administrativo') {
+        label = '<span class="label label-info">Administrativo</span>'
+      }
+      return label;
     },
     onPaginationData (paginationData) {
       this.$refs.pagination.setPaginationData(paginationData)
