@@ -19,6 +19,8 @@ class User extends Authenticatable
         'nombre', 'apellidos', 'email', 'password', 'rol'
     ];
 
+    protected $primaryKey = 'nick';
+
     /**
      * The attributes that should be hidden for arrays.
      *

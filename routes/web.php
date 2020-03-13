@@ -14,5 +14,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/users');
 });
+
+Route::get('/users', 'UserController@index');
+Route::get('/users/create', 'UserController@create');
+Route::post('/users', 'UserController@store');
+Route::get('/users/{user}/edit', 'UserController@edit');
+Route::patch('/users/{user}', 'UserController@update');
+Route::delete('/users/{user}', 'UserController@delete');

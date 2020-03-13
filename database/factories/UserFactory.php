@@ -19,11 +19,10 @@ use Illuminate\Support\Str;
 
 $factory->define(User::class, function (Faker $faker) {
     return [
-        'nick' => $faker->unique()->bothify('#_?#?##???##'),
         'nombre' => $faker->name,
         'apellidos' => $faker->lastName,
         'email' => $faker->unique()->safeEmail,
         'password' => $faker->bothify('######_?????'),
-        'rol' => rand(1, 3)
+        'rol' => array_rand(["admin", "operador", "administrativo"])
     ];
 });
