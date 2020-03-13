@@ -3,6 +3,10 @@
 
 ## Agilgob Test
 
+
+![Agilgob gif](https://raw.githubusercontent.com/lem93/agilgob/master/agilgob.gif)
+
+
 ### Instalacion
 
 Development environment es [Laravel Homestead](https://laravel.com/docs/7.x/homestead) con todos los settings en default.
@@ -20,6 +24,3 @@ Para hecharlo a volar solo hay que correr los comandos
 - Server side pagination with search and sorting
 - Usando vue.js
 - Validacion de datos con notificacion de errores
-
-
-![Agilgob gif](https://raw.githubusercontent.com/lem93/agilgob/master/agilgob.gif)
