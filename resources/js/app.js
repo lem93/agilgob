@@ -27,6 +27,9 @@ require('./bootstrap');
 import Vue from 'vue'
 import App from './app.vue'
 
+import MyVuetable from './components/MyVuetable.vue';
+Vue.component('my-vuetable', MyVuetable);
+
 // Vue.config.productionTip = false
 
 new Vue({

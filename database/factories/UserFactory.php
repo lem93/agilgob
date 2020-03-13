@@ -23,6 +23,6 @@ $factory->define(User::class, function (Faker $faker) {
         'apellidos' => $faker->lastName,
         'email' => $faker->unique()->safeEmail,
         'password' => $faker->bothify('######_?????'),
-        'rol' => array_rand(["admin", "operador", "administrativo"])
+        'rol' => array("admin", "operador", "administrativo")[rand(0, 2)]
     ];
 });
