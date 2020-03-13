@@ -15,15 +15,16 @@
 
   <div class="text-gray-700 text-center bg-gray-100 px-4 py-2 m-2 ">
 
-    <form class="w-full max-w-lg" method="POST" action="{{ url('users') }}" enctype="multipart/form-data" >
+    <form class="w-full max-w-lg" method="POST" action="{{ url('users/'.$user->nick) }}" enctype="multipart/form-data" >
       {{ csrf_field() }}
+      {{ method_field('PATCH') }}
 
       <div class="flex flex-wrap -mx-3 mb-6">
         <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
           <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="grid-email">
             Email
           </label>
-          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="email" type="text" placeholder="">
+          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="email" type="text" value="{{ $user->email }}" placeholder="">
           @if ($errors->has('email'))
             <p class="text-red-500 text-xs italic">{{ $errors->first('email') }}</p>
           @endif
@@ -32,7 +33,7 @@
           <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="grid-password">
             Password
           </label>
-          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-gray-500" name="password" type="password" placeholder="">
+          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-gray-500" name="password" type="password" value="{{ $user->password }}" placeholder="">
           @if ($errors->has('password'))
             <p class="text-red-500 text-xs italic">{{ $errors->first('password') }}</p>
           @endif
@@ -44,7 +45,7 @@
           <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="grid-first-name">
             Nombre
           </label>
-          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="nombre" type="text" placeholder="">
+          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="nombre" type="text" value="{{ $user->nombre }}" placeholder="">
           @if ($errors->has('nombre'))
             <p class="text-red-500 text-xs italic">{{ $errors->first('nombre') }}</p>
           @endif
@@ -75,7 +76,7 @@
           <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="grid-password">
             Apellidos
           </label>
-          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-gray-500" name="apellidos" type="text" placeholder="">
+          <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-gray-500" name="apellidos" type="text" value="{{ $user->apellidos }}"  placeholder="">
         </div>
         @if ($errors->has('apellidos'))
           <div class="w-full px-3">
@@ -85,10 +86,23 @@
       </div>
 
 
-      <div class="flex flex-wrap mb-2 float-right ">
-        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" type='submit'>
-          Crear
-        </button>
+      <div class="flex ">
+          <div class="flex flex-1 mb-2 ">
+            {{-- <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+              Eliminar
+            </button> --}}
+          </div>
+          <div class="flex flex-1 mb-2 ">
+          </div>
+        <div class="flex flex-1 float-right mb-2">
+          <div class="flex flex-1">
+          </div>
+          <div class="flex flex-1">
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" type='submit'>
+              Actualizar
+            </button>
+          </div>
+        </div>
       </div>
     </form>
 

@@ -1944,6 +1944,7 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
 /* harmony default export */ __webpack_exports__["default"] = ({
   props: {
     rowData: {
@@ -1955,8 +1956,11 @@ __webpack_require__.r(__webpack_exports__);
     }
   },
   methods: {
-    itemAction: function itemAction(action, data, index) {
+    editAction: function editAction(data) {
       window.location.href = 'http://agilgob.test/users/' + data.nick + '/edit';
+    },
+    deleteAction: function deleteAction(data) {
+      window.location.href = 'http://agilgob.test/users/' + data.nick + '/delete';
     }
   }
 });
@@ -54344,11 +54348,24 @@ var render = function() {
         staticClass: "btn btn-sm",
         on: {
           click: function($event) {
-            return _vm.itemAction("edit-item", _vm.rowData, _vm.rowIndex)
+            return _vm.editAction(_vm.rowData)
           }
         }
       },
       [_c("i", { staticClass: "glyphicon glyphicon-pencil" })]
+    ),
+    _vm._v(" "),
+    _c(
+      "button",
+      {
+        staticClass: "btn btn-sm",
+        on: {
+          click: function($event) {
+            return _vm.deleteAction(_vm.rowData)
+          }
+        }
+      },
+      [_c("i", { staticClass: "glyphicon glyphicon-trash" })]
     )
   ])
 }

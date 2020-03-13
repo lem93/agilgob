@@ -23,7 +23,7 @@
             <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="grid-email">
               Email
             </label>
-            <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="email" type="text" placeholder="">
+            <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="email" type="text" placeholder="">
             @if ($errors->has('email'))
               <p class="text-red-500 text-xs italic">{{ $errors->first('email') }}</p>
             @endif
@@ -44,7 +44,7 @@
             <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="grid-first-name">
               Nombre
             </label>
-            <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="nombre" type="text" placeholder="">
+            <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white" name="nombre" type="text" placeholder="">
             @if ($errors->has('nombre'))
               <p class="text-red-500 text-xs italic">{{ $errors->first('nombre') }}</p>
             @endif

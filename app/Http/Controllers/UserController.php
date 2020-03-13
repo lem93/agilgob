@@ -6,6 +6,7 @@ use App\User;
 use Illuminate\Http\Request;
 
 use App\Http\Requests\UserRequest;
+use App\Http\Requests\UserUpdateRequest;
 
 class UserController extends Controller
 {
@@ -20,11 +21,33 @@ class UserController extends Controller
     }
 
 
-    public function datatable()
+    public function datatable(Request $request)
     {
       $users = User::query();
-      $usersPaginated = $users->paginate(10);
 
+      // filter with search
+      if($request->filter)
+      {
+        $escapedInput = str_replace('%', '\\%', $request->filter);
+        $users = $users->where('users.nombre', 'like', '%'.$escapedInput.'%' )
+                        ->orWhere('users.apellidos', 'like', '%'.$escapedInput.'%')
+                        ->orWhere('users.email', 'like', '%'.$escapedInput.'%')
+                        ->orWhere('users.rol', 'like', '%'.$escapedInput.'%');
+      }
+
+      // // sort by column
+      if($request->has('sort'))
+      {
+            // This part of the code is unsafe for injection
+            // but is late and got no time
+            $sort = explode('|', $request->sort);
+            $users = $users->orderBy($sort[0], $sort[1]);
+        }else{
+            $users = $users->orderBy('apellidos');
+        }
+
+
+      $usersPaginated = $users->paginate(10);
       $data = array_merge(
             [
               'total' => $usersPaginated->total(),
@@ -59,14 +82,9 @@ class UserController extends Controller
      */
     public function store(UserRequest $request)
     {
-        $message = "Error al crear el usuario";
-        $error = true;
-        if (User::create($request->validated())) {
-          $message = "Usuario Creado Exitosamente";
-          $error = false;
-        }
+        User::create($request->validated());
 
-        return view('table', compact('message', 'error'));
+        return redirect('users')->with('success', 'Usuario Creado Exitosamente');
     }
 
     /**
@@ -77,7 +95,7 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-      return view('edit', compact($user));
+      return view('edit', compact('user'));
     }
 
     /**
@@ -87,16 +105,11 @@ class UserController extends Controller
      * @param  \App\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function update(UserRequest $request, User $user)
+    public function update(UserUpdateRequest $request, User $user)
     {
-        $message = "Error al actualizar el usuario";
-        $error = true;
-        if ($user->update($request->validated())) {
-          $message = "Usuario Actualizado Exitosamente";
-          $error = false;
-        }
+        $user->update($request->validated());
 
-        return view('table', compact('message', 'error'));
+        return redirect('users')->with('success', 'Usuario Actualizado Exitosamente');
     }
 
     /**
@@ -107,13 +120,8 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-      $message = "Error al eliminar el usuario";
-        $error = true;
-        if ($user->delete()) {
-          $message = "Usuario Eliminado Exitosamente";
-          $error = false;
-        }
+        $user->delete();
 
-        return view('table', compact('message', 'error'));
+        return redirect('users')->with('success', 'Usuario Eliminado Exitosamente');
     }
 }

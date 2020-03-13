@@ -1,6 +1,7 @@
   <template>
     <div class="custom-actions">
-      <button class="btn btn-sm" @click="itemAction('edit-item', rowData, rowIndex)"><i class="glyphicon glyphicon-pencil"></i></button>
+      <button class="btn btn-sm" @click="editAction(rowData)"><i class="glyphicon glyphicon-pencil"></i></button>
+      <button class="btn btn-sm" @click="deleteAction(rowData)"><i class="glyphicon glyphicon-trash"></i></button>
     </div>
   </template>
 
@@ -16,8 +17,11 @@
       }
     },
     methods: {
-      itemAction (action, data, index) {
+      editAction (data) {
         window.location.href = 'http://agilgob.test/users/'+data.nick+'/edit';
+      },
+      deleteAction(data){
+        window.location.href = 'http://agilgob.test/users/'+data.nick+'/delete';
       }
     }
   }
